@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Node<T>
 where
     T: Document,
