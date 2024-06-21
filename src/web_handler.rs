@@ -37,10 +37,8 @@ async fn get_document(
     Path(path): Path<String>,
 ) -> (StatusCode, Json<Option<Document>>) {
     let state = Arc::clone(&state);
-    let mut root = state.data.lock().unwrap();
-    let path_vec: Vec<&str> = path.split(".").collect();
-    let result = root.check(&path_vec);
-    let doc = match result {
+    let root = state.data.lock().unwrap();
+    let doc = match root.check(&path.split(".").collect::<Vec<&str>>()) {
         Some(node_info) => Document {
             label: node_info.label,
             value: match node_info.value {
