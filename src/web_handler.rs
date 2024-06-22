@@ -52,23 +52,50 @@ async fn get_document(
     (StatusCode::OK, Json(Some(doc)))
 }
 
-async fn query_documents(Path(path): Path<String>) -> (StatusCode, Json<Vec<Document>>) {
-    let doc = Document {
-        label: "example".to_string(),
-        value: None,
-    };
-    // TODO
-    (StatusCode::OK, Json(vec![doc]))
+async fn query_documents(
+    State(state): State<Arc<AppState>>,
+    Path(path): Path<String>,
+    Path(op): Path<ExpOp>,
+    Path(target): Path<String>,
+) -> (StatusCode, Json<Vec<Document>>) {
+    let state = Arc::clone(&state);
+    let root = state.data.lock().unwrap();
+    let vec_path = &path.split(".").collect::<Vec<&str>>();
+    let results = root.query(&vec_path, |doc| match doc {
+        Some(val) => match op {
+            ExpOp::Eq => val == &target,
+            ExpOp::Neq => val != &target,
+            ExpOp::St => val.starts_with(&target),
+            ExpOp::Ctn => val.contains(&target),
+        },
+        None => false,
+    });
+    match results {
+        Some(set) => (
+            StatusCode::OK,
+            Json(
+                set.iter()
+                    .map(|doc| Document {
+                        label: doc.label.to_string(),
+                        value: match doc.value {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        },
+                    })
+                    .collect(),
+            ),
+        ),
+        None => (StatusCode::OK, Json(vec![])),
+    }
 }
 
 async fn create_document(
     State(state): State<Arc<AppState>>,
-    Path(path): Path<String>,
     Json(payload): Json<DocumentPayload>,
 ) -> StatusCode {
     let state = Arc::clone(&state);
     let mut root = state.data.lock().unwrap();
-    let vec_path = &path.split(".").collect::<Vec<&str>>();
+    let vec_path = &payload.path.split(".").collect::<Vec<&str>>();
     root.insert(&vec_path, payload.data.value);
     StatusCode::CREATED
 }
@@ -100,13 +127,22 @@ async fn update_document(
 async fn delete_document(
     State(state): State<Arc<AppState>>,
     Path(path): Path<String>,
-) -> (StatusCode, Json<Option<Document>>) {
+) -> StatusCode {
     let state = Arc::clone(&state);
     let mut root = state.data.lock().unwrap();
     let vec_path = &path.split(".").collect::<Vec<&str>>();
-    // TODO
-    root.delete(&vec_path);
-    (StatusCode::OK, Json(None))
+    match root.delete(&vec_path) {
+        Ok(_) => StatusCode::OK,
+        Err(_) => StatusCode::NOT_FOUND,
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+enum ExpOp {
+    Eq,
+    Neq,
+    St,
+    Ctn,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -119,4 +155,11 @@ struct Document {
 struct DocumentPayload {
     path: String,
     data: Document,
+}
+
+#[derive(Serialize, Deserialize)]
+struct DocQuery {
+    path: String,
+    target: String,
+    op: ExpOp,
 }

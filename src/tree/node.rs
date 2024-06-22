@@ -110,7 +110,7 @@ impl<T: Document> Node<T> {
     pub fn query(
         &self,
         path: &[&str],
-        filter: fn(doc: &Option<T>) -> bool,
+        filter: impl Fn(&Option<T>) -> bool,
     ) -> Option<Vec<NodeInfo<T>>> {
         let parent = Self::find(&self, path)?;
         let mut results: Vec<NodeInfo<T>> = Vec::new();
