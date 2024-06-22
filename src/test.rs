@@ -71,7 +71,7 @@ mod tests {
         assert!(filtered.contains(&"Alabama".to_string()));
 
         // Delete
-        root.delete(&path_three[..]);
+        root.delete(&path_three[..]).unwrap();
         let collection = root.find(&path_three[..]);
         assert!(match collection {
             Some(_) => false,

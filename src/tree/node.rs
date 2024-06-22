@@ -92,15 +92,18 @@ impl<T: Document> Node<T> {
         None
     }
 
-    pub fn delete(&mut self, path: &[&str]) -> Option<Self> {
+    pub fn delete(&mut self, path: &[&str]) -> Result<(), Box<dyn Error>> {
         if path.len() == 0 {
-            return None;
+            return Err(NodeError::NotFound.into());
         } else if path.len() == 1 {
-            return self.children.remove(path[0]);
+            return match self.children.remove(path[0]) {
+                Some(_) => Ok(()),
+                None => Err(NodeError::NotFound.into()),
+            };
         }
         match self.children.get_mut(path[0]) {
             Some(node) => node.delete(&path[1..]),
-            None => None,
+            None => Err(NodeError::NotFound.into()),
         }
     }
 
