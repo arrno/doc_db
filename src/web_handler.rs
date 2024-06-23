@@ -1,6 +1,6 @@
 use crate::tree::node::Node;
 use axum::{
-    extract::Path,
+    extract::Query,
     extract::State,
     http::StatusCode,
     routing::{delete, get, patch, post},
@@ -22,9 +22,9 @@ pub async fn serve() {
     let app = Router::new()
         .route("/document", get(query_documents))
         .route("/document", post(create_document))
-        .route("/document/:label", get(get_document))
-        .route("/document/:label", patch(update_document))
-        .route("/document/:label", delete(delete_document))
+        .route("/document", patch(update_document))
+        .route("/document", delete(delete_document))
+        .route("/query/document", get(get_document))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -34,7 +34,7 @@ pub async fn serve() {
 
 async fn get_document(
     State(state): State<Arc<AppState>>,
-    Path(path): Path<String>,
+    Query(path): Query<String>,
 ) -> (StatusCode, Json<Option<Document>>) {
     let state = Arc::clone(&state);
     let root = state.data.lock().unwrap();
@@ -54,9 +54,9 @@ async fn get_document(
 
 async fn query_documents(
     State(state): State<Arc<AppState>>,
-    Path(path): Path<String>,
-    Path(op): Path<ExpOp>,
-    Path(target): Path<String>,
+    Query(path): Query<String>,
+    Query(op): Query<ExpOp>,
+    Query(target): Query<String>,
 ) -> (StatusCode, Json<Vec<Document>>) {
     let state = Arc::clone(&state);
     let root = state.data.lock().unwrap();
@@ -94,7 +94,7 @@ async fn create_document(
     let state = Arc::clone(&state);
     let mut root = state.data.lock().unwrap();
     let vec_path = &payload.path.split(".").collect::<Vec<&str>>();
-    root.insert(&vec_path, payload.data.value);
+    root.insert(&vec_path, payload.value);
     StatusCode::CREATED
 }
 
@@ -106,7 +106,7 @@ async fn update_document(
     let mut root = state.data.lock().unwrap();
     let mut result_val = None;
     let vec_path = payload.path.split(".").collect::<Vec<&str>>();
-    if let Some(val) = payload.data.value {
+    if let Some(val) = payload.value {
         result_val = match root.patch(&vec_path, val.into()) {
             Ok(res) => Some(res.clone()),
             Err(_) => return (StatusCode::BAD_REQUEST, Json(None)),
@@ -124,7 +124,7 @@ async fn update_document(
 
 async fn delete_document(
     State(state): State<Arc<AppState>>,
-    Path(path): Path<String>,
+    Query(path): Query<String>,
 ) -> StatusCode {
     let state = Arc::clone(&state);
     let mut root = state.data.lock().unwrap();
@@ -152,7 +152,7 @@ struct Document {
 #[derive(Serialize, Deserialize)]
 struct DocumentPayload {
     path: String,
-    data: Document,
+    value: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
