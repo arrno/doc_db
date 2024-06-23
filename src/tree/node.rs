@@ -107,25 +107,23 @@ impl<T: Document> Node<T> {
         }
     }
 
-    pub fn query(
-        &self,
-        path: &[&str],
-        filter: impl Fn(&Option<T>) -> bool,
-    ) -> Option<Vec<NodeInfo<T>>> {
-        let parent = Self::find(&self, path)?;
+    pub fn query(&self, path: &[&str], filter: impl Fn(&Option<T>) -> bool) -> Vec<NodeInfo<T>> {
+        let parent = Self::find(&self, path);
         let mut results: Vec<NodeInfo<T>> = Vec::new();
-        parent.children.iter().for_each(|(k, v)| {
-            if filter(&v.value) {
-                results.push(NodeInfo {
-                    label: k.to_string(),
-                    value: match &v.value {
-                        Some(x) => Some(x),
-                        None => None,
-                    },
-                })
-            }
-        });
-        Some(results)
+        if let Some(node) = parent {
+            node.children.iter().for_each(|(k, v)| {
+                if filter(&v.value) {
+                    results.push(NodeInfo {
+                        label: k.to_string(),
+                        value: match &v.value {
+                            Some(x) => Some(x),
+                            None => None,
+                        },
+                    })
+                }
+            });
+        }
+        results
     }
 
     pub fn patch(

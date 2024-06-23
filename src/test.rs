@@ -62,7 +62,6 @@ mod tests {
                 Some(state) => state.starts_with("Al"),
                 None => false,
             })
-            .unwrap()
             .into_iter()
             .map(|x| x.value.unwrap().clone())
             .collect();

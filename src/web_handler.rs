@@ -70,23 +70,21 @@ async fn query_documents(
         },
         None => false,
     });
-    match results {
-        Some(set) => (
-            StatusCode::OK,
-            Json(
-                set.iter()
-                    .map(|doc| Document {
-                        label: doc.label.to_string(),
-                        value: match doc.value {
-                            Some(v) => Some(v.to_string()),
-                            None => None,
-                        },
-                    })
-                    .collect(),
-            ),
+    (
+        StatusCode::OK,
+        Json(
+            results
+                .iter()
+                .map(|doc| Document {
+                    label: doc.label.to_string(),
+                    value: match doc.value {
+                        Some(v) => Some(v.to_string()),
+                        None => None,
+                    },
+                })
+                .collect(),
         ),
-        None => (StatusCode::OK, Json(vec![])),
-    }
+    )
 }
 
 async fn create_document(
