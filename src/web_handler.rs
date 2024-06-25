@@ -7,6 +7,7 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 struct AppState {
@@ -20,11 +21,11 @@ pub async fn serve() {
         data: Mutex::new(root),
     });
     let app = Router::new()
-        .route("/document", get(query_documents))
+        .route("/document", get(get_document))
         .route("/document", post(create_document))
         .route("/document", patch(update_document))
         .route("/document", delete(delete_document))
-        .route("/query/document", get(get_document))
+        .route("/query/document", get(query_documents))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -34,10 +35,14 @@ pub async fn serve() {
 
 async fn get_document(
     State(state): State<Arc<AppState>>,
-    Query(path): Query<String>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> (StatusCode, Json<Option<Document>>) {
     let state = Arc::clone(&state);
     let root = state.data.lock().unwrap();
+    let path = match params.get("path") {
+        Some(val) => val,
+        None => return (StatusCode::BAD_REQUEST, Json(None)),
+    };
     let vec_path = &path.split(".").collect::<Vec<&str>>();
     let doc = match root.check(&vec_path) {
         Some(node_info) => Document {
@@ -54,19 +59,21 @@ async fn get_document(
 
 async fn query_documents(
     State(state): State<Arc<AppState>>,
-    Query(path): Query<String>,
-    Query(op): Query<ExpOp>,
-    Query(target): Query<String>,
+    Query(params): Query<QueryParams>,
 ) -> (StatusCode, Json<Vec<Document>>) {
     let state = Arc::clone(&state);
     let root = state.data.lock().unwrap();
-    let vec_path = &path.split(".").collect::<Vec<&str>>();
+    let vec_path = &params.path.split(".").collect::<Vec<&str>>();
+    let param_op = match ExpOp::from_str(&params.op) {
+        Some(op) => op,
+        None => return (StatusCode::BAD_REQUEST, Json(vec![])),
+    };
     let results = root.query(&vec_path, |doc| match doc {
-        Some(val) => match op {
-            ExpOp::Eq => val == &target,
-            ExpOp::Neq => val != &target,
-            ExpOp::St => val.starts_with(&target),
-            ExpOp::Ctn => val.contains(&target),
+        Some(val) => match param_op {
+            ExpOp::Eq => val == &params.target,
+            ExpOp::Neq => val != &params.target,
+            ExpOp::St => val.starts_with(&params.target),
+            ExpOp::Ctn => val.contains(&params.target),
         },
         None => false,
     });
@@ -124,8 +131,12 @@ async fn update_document(
 
 async fn delete_document(
     State(state): State<Arc<AppState>>,
-    Query(path): Query<String>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> StatusCode {
+    let path = match params.get("path") {
+        Some(val) => val,
+        None => return StatusCode::BAD_REQUEST,
+    };
     let state = Arc::clone(&state);
     let mut root = state.data.lock().unwrap();
     let vec_path = &path.split(".").collect::<Vec<&str>>();
@@ -136,11 +147,30 @@ async fn delete_document(
 }
 
 #[derive(Serialize, Deserialize)]
+struct QueryParams {
+    pub op: String,
+    pub path: String,
+    pub target: String,
+}
+
+#[derive(Serialize, Deserialize)]
 enum ExpOp {
     Eq,
     Neq,
     St,
     Ctn,
+}
+
+impl ExpOp {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "Eq" => Some(Self::Eq),
+            "Neq" => Some(Self::Neq),
+            "St" => Some(Self::St),
+            "Ctn" => Some(Self::Ctn),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]

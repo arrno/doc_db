@@ -78,9 +78,13 @@ impl APIMGR {
     }
 
     async fn display_response(&self, r: Response) -> Result<(), Box<dyn Error>> {
-        println!("{:?}", r.status());
+        let status = r.status();
+        println!("{:?}", &status);
         let text = r.text().await?;
-        let resp: Value = serde_json::from_str(&text)?;
+        if vec!["400", "404", "403", "500"].contains(&status.as_str()) {
+            println!("{text}");
+        }
+        let resp: Value = serde_json::from_str(&text).unwrap_or("{}".into());
         let pretty_resp = serde_json::to_string_pretty(&resp)?;
         println!("{}", pretty_resp);
         Ok(())
@@ -127,8 +131,31 @@ impl APIMGR {
         Ok(resp)
     }
 
+    async fn patch<T>(&self, uri: &str, payload: &T) -> Result<Response, Box<dyn Error>>
+    where
+        T: Serialize,
+    {
+        let json = serde_json::to_string(payload)?;
+        let resp = self
+            .client
+            .patch(uri)
+            .headers(self.headers.clone())
+            .header("Content-Type", "application/json")
+            .body(json)
+            .send()
+            .await?;
+        Ok(resp)
+    }
+
+    async fn delete(&self, uri: &str) -> Result<Response, Box<dyn Error>> {
+        let resp = self
+            .client
+            .delete(uri)
+            .headers(self.headers.clone())
+            .send()
+            .await?;
+        Ok(resp)
+    }
     // TODO
     // fn put() {}
-    // fn patch() {}
-    // fn delete() {}
 }
