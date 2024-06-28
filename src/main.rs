@@ -1,6 +1,6 @@
 mod client;
 mod test;
-mod tree;
+mod trie;
 mod web_handler;
 
 fn main() {

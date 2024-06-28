@@ -1,5 +1,5 @@
-use crate::tree::document::Document;
-use crate::tree::util::NodeError;
+use crate::trie::document::Document;
+use crate::trie::util::NodeError;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error;
@@ -126,7 +126,7 @@ impl<T: Document> Node<T> {
         results
     }
 
-    pub fn patch(
+    pub fn update(
         &mut self,
         path: &[&str],
         update: <T as Document>::U,
@@ -136,18 +136,7 @@ impl<T: Document> Node<T> {
             None => return Err(NodeError::NotFound.into()),
         };
         if let Some(val) = &mut child.value {
-            return val.patch(update);
-        }
-        Err(NodeError::IsNull.into())
-    }
-
-    pub fn put(&mut self, path: &[&str], update: T) -> Result<&T, Box<dyn Error>> {
-        let child = match self.find_mut(path) {
-            Some(val) => val,
-            None => return Err(NodeError::NotFound.into()),
-        };
-        if let Some(val) = &mut child.value {
-            return val.put(update);
+            return val.update(update);
         }
         Err(NodeError::IsNull.into())
     }

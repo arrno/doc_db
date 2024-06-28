@@ -1,4 +1,4 @@
-use crate::tree::node;
+use crate::trie::node;
 
 #[cfg(test)]
 mod tests {
@@ -33,20 +33,12 @@ mod tests {
         assert_eq!(found, None);
 
         // Put / Patch
-        root.insert(&path[..path.len() - 1], Some("Change Me".to_string()));
-        let result = root
-            .put(&path[..path.len() - 1], "Hola".to_string())
-            .unwrap();
-        assert_eq!(result, "Hola");
-
+        root.insert(&path[..], Some("Hola".to_string()));
         let found = root.check(&path[..]).unwrap().value.unwrap();
-        assert_eq!(*found, hello.clone());
-
-        let found = root.check(&path[..path.len() - 1]).unwrap().value.unwrap();
-        assert_eq!(found, "Hola");
+        assert_eq!(*found, "Hola".to_string());
 
         let result = root
-            .patch(&path[..path.len() - 1], ", Senora!".to_string()[..].into())
+            .update(&path[..], ", Senora!".to_string().into())
             .unwrap();
         assert_eq!(result, "Hola, Senora!");
 

@@ -1,4 +1,4 @@
-use crate::tree::node::Node;
+use crate::trie::node::Node;
 use axum::{
     extract::Query,
     extract::State,
@@ -114,7 +114,7 @@ async fn update_document(
     let mut result_val = None;
     let vec_path = payload.path.split(".").collect::<Vec<&str>>();
     if let Some(val) = payload.value {
-        result_val = match root.patch(&vec_path, val.into()) {
+        result_val = match root.update(&vec_path, val.into()) {
             Ok(res) => Some(res.clone()),
             Err(_) => return (StatusCode::BAD_REQUEST, Json(None)),
         };
